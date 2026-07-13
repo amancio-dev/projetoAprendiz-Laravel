@@ -1,139 +1,227 @@
-# 🎓 Projeto Aprendiz — Laravel 13
+<div align="center">
 
-Migração do projeto PHP original (PDO + AdminLTE) para Laravel 13, com MVC completo, Eloquent, multi-autenticação por guard e Blade.
+# 🎓 Projeto Aprendiz
 
-Esta versão do README existe porque a primeira entrega foi feita com uma leitura rasa do projeto original (poucos arquivos abertos, sem checar o SQL completo). Depois de reclamação do autor, o projeto original foi lido por inteiro — os ~70 arquivos PHP da aplicação, não só os de biblioteca (AdminLTE) — e esta versão corrige o que estava errado e adiciona o que faltava. As duas seções abaixo documentam isso com honestidade, porque isso importa mais que uma lista de features.
+**Sistema de gerenciamento de aprendizes com controle de presença e multi-autenticação**
 
----
+[![PHP](https://img.shields.io/badge/PHP-8.3%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://php.net)
+[![Laravel](https://img.shields.io/badge/Laravel-13.x-FF2D20?style=flat-square&logo=laravel&logoColor=white)](https://laravel.com)
+[![License](https://img.shields.io/badge/licença-MIT-green?style=flat-square)](LICENSE)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://mysql.com)
 
-## 🔎 O que a auditoria completa revelou
-
-### Bugs reais na primeira entrega (Laravel), agora corrigidos
-1. **Inconsistência de versão fatal**: `composer.json` pedia Laravel `^10.0`, mas `bootstrap/app.php` usava a sintaxe `Application::configure()->withMiddleware()`, que só existe a partir do Laravel 11. Rodar `composer install` teria instalado o Laravel 10 e a aplicação quebraria ao subir. **Corrigido**: `composer.json` agora pede Laravel `^13.0` (versão atual, lançada em março/2026) e PHP `^8.3`, consistente com a sintaxe usada.
-2. **Duas features reais do original tinham ficado de fora**, porque só 6 dos ~70 arquivos PHP foram lidos antes de começar a portar:
-   - Empresa editando o próprio cadastro (`gerenciar_empresa_logada.php` no original) — **adicionado**: `Empresa\PerfilController`.
-   - Administrador cadastrando outros administradores (`gerenciar_usuario.php` / tabela `dono_app`) — **adicionado**: `Admin\AdminController`.
-
-### O que existia no projeto original mas está confirmado como código morto (não foi portado, e não deveria ser)
-Encontrado ao ler o SQL completo e fazer `grep` de cada tabela contra todos os arquivos PHP:
-- **Tabela `empresa_acompanha_aluno`** (presença/falta, entrada/saída, anexo de justificativa) existe no dump SQL, mas **nenhum arquivo PHP do projeto a referencia**. É uma tabela criada e nunca implementada. Não portei, mas fica como sugestão de próxima feature real (ver seção de roadmap).
-- `ler_acompanhar_treinamento.php` e `crud.php` fazem consultas a tabelas (`usuario`, `curso`, `acompanhamento_treinamento_usuario`) que **não existem no schema** — sobras de um template genérico de admin ("TrainOps") do qual este projeto foi iniciado, nunca adaptadas.
-- `esqueci.php` (recuperação de senha) é um formulário estático com `action=""` — nunca foi ligado a um backend. Não existia de fato no original.
-- O menu do aluno linka para `visualizar_batidas.php`, arquivo que **não existe no ZIP** — link quebrado no próprio original.
-
-### Falhas de segurança confirmadas no PHP original (não hipotéticas — lidas no código)
-1. **Nenhum controle de acesso por perfil.** `pg_sessao.php`, incluído em toda página protegida, só verifica `isset($_SESSION['email'])`. Nunca verifica `$_SESSION['tipo']`. Um aluno autenticado que soubesse a URL de uma página de admin conseguiria carregá-la.
-2. **IDOR em `aprovar_ponto.php` e `excluir_ponto.php`**: recebem `id_ponto` via GET e fazem `UPDATE` direto, sem checar se o ponto pertence à empresa logada. Qualquer usuário autenticado podia aprovar/rejeitar ponto de qualquer empresa mudando o número na URL.
-3. **IDOR em `editar_empresa_logada.php`**: o `id_empresa` usado na consulta vem de `$_GET['id_empresa']`, não da sessão — uma empresa logada podia editar os dados de outra empresa trocando o parâmetro.
-4. Senhas com **SHA1 sem salt**; ações que alteram dados (aprovar/rejeitar ponto) disparadas por **GET**, sem proteção CSRF.
-
-A versão Laravel corrige os 4 pontos por construção: guards separados por tipo de usuário + middleware `role`, ownership check (`abort_if`) em toda ação de Empresa/Aluno, bcrypt via `Hash::make()`, e todas as mutações são POST/PUT/PATCH/DELETE com token CSRF. Os testes em `tests/Feature/EmpresaOwnershipTest.php` verificam especificamente o cenário do item 2 e 3.
+</div>
 
 ---
 
-## ✨ Resumo das melhorias
+## 📋 Sobre o projeto
 
-| Aspecto | Original (PHP) | Laravel |
+O **Projeto Aprendiz** é um sistema web para gerenciamento de jovens aprendizes, desenvolvido com **Laravel 13**. Conecta três partes envolvidas no Programa Jovem Aprendiz:
+
+- **Empresas** contratantes, que cadastram seus aprendizes e aprovam pontos de presença
+- **Instituições de ensino** vinculadas às empresas e turmas
+- **Aprendizes**, que registram sua presença com geolocalização via GPS
+
+O projeto foi originalmente desenvolvido em **PHP puro com PDO** e migrado para Laravel como exercício de modernização de código legado, incluindo correção de vulnerabilidades de segurança do projeto original.
+
+---
+
+## ✨ Funcionalidades
+
+### 🔑 Administrador
+- Dashboard com estatísticas gerais do sistema
+- CRUD completo de empresas, aprendizes e instituições de ensino
+- Gerenciamento de outros administradores
+- Aprovação e rejeição de pontos de qualquer empresa
+
+### 🏢 Empresa
+- Dashboard com resumo dos próprios aprendizes e pontos pendentes
+- CRUD de aprendizes e instituições vinculadas à empresa
+- Aprovação e rejeição de pontos dos próprios aprendizes
+- Edição do próprio perfil e credenciais
+
+### 🎓 Aprendiz
+- Registro de ponto com captura de **GPS via HTML5 Geolocation**
+- Mapa interativo exibindo a localização capturada (Leaflet.js + OpenStreetMap)
+- Histórico de pontos com filtro por status (pendente / aprovado / rejeitado)
+
+---
+
+## 🛡️ Segurança
+
+Este projeto corrige quatro vulnerabilidades confirmadas no código PHP original:
+
+| Vulnerabilidade | Original | Laravel |
 |---|---|---|
-| Arquitetura | Script por página, SQL na view | MVC (Model / Controller / Blade) |
-| Controle de acesso | Só verifica login, não verifica tipo | Guards + middleware `role` por rota |
-| Ownership (empresa vê só o que é seu) | Ausente (IDOR confirmado) | `abort_if` em toda ação + testes cobrindo isso |
-| Senha | SHA1 sem salt | bcrypt (`Hash::make`) |
-| Mutações (aprovar/rejeitar) | GET, sem CSRF | POST/PATCH com CSRF |
-| Recuperação de senha | Formulário estático, não funcional | Fluxo completo por guard, com e-mail |
-| Banco de dados | SQL manual via PDO | Eloquent + Migrations + Seeder |
-| Testes | Nenhum | PHPUnit cobrindo login, guards e ownership |
+| Controle de acesso por perfil | Só verifica se está logado, nunca verifica o tipo | 3 guards isolados + middleware `role` por rota |
+| IDOR em aprovação de ponto | `id_ponto` vinha do GET sem verificar o dono | `abort_if` garante que o ponto pertence à empresa logada |
+| IDOR na edição de empresa | `id_empresa` vinha do GET, não da sessão | ID sempre obtido do guard autenticado, nunca do request |
+| Hashing de senha | SHA1 sem salt | bcrypt via `Hash::make()` |
 
 ---
 
-## 📁 Estrutura
+## 🚀 Stack
 
-```
-app/
-├── Http/Controllers/
-│   ├── AuthController.php              # Login/logout multi-guard
-│   ├── Auth/PasswordResetController.php# Recuperação de senha (3 guards)
-│   ├── Admin/   (Dashboard, Admin, Empresa, Aluno, Instituicao, Ponto)
-│   ├── Empresa/ (Dashboard, Perfil, Aluno, Instituicao, Ponto)
-│   └── Aluno/   (Dashboard, Ponto)
-│   └── Middleware/CheckRole.php
-├── Models/ (Admin, Empresa, Aluno, InstituicaoEducacao, Ponto)
-└── Notifications/ResetPasswordNotification.php
-
-database/
-├── migrations/  (6 migrations: 5 tabelas + tokens de reset por guard)
-├── factories/   (Admin, Empresa, Aluno, InstituicaoEducacao)
-└── seeders/DatabaseSeeder.php
-
-resources/views/
-├── auth/ (login, forgot-password, reset-password)
-├── layouts/app.blade.php
-├── admin/   (dashboard, admins, empresas, alunos, instituicoes, pontos)
-├── empresa/ (dashboard, perfil, alunos, instituicoes, pontos)
-└── aluno/   (dashboard, ponto/registrar, ponto/historico)
-
-tests/Feature/
-├── Auth/LoginTest.php            # Login nos 3 guards, credenciais erradas, guard errado
-├── Auth/RoleMiddlewareTest.php   # Guest bloqueado, cross-guard bloqueado
-└── EmpresaOwnershipTest.php      # Cobre exatamente as falhas de IDOR encontradas no original
-
-routes/web.php
-```
+| Tecnologia | Uso |
+|---|---|
+| Laravel 13 | Framework PHP |
+| Eloquent ORM | Models e relacionamentos |
+| Multi-guard Auth | Sessões isoladas por tipo de usuário |
+| Blade | Templates |
+| AdminLTE 3 | Interface administrativa (via CDN) |
+| DataTables | Tabelas com busca e paginação (via CDN) |
+| Leaflet.js | Mapa de geolocalização |
+| OpenStreetMap | Tiles do mapa (gratuito, sem API key) |
+| MySQL 8+ | Banco de dados |
+| PHPUnit | Testes |
 
 ---
 
-## 🚀 Instalação
+## ⚙️ Instalação
+
+### Pré-requisitos
+- PHP >= 8.3
+- Composer
+- MySQL >= 8.0
+
+### Passo a passo
 
 ```bash
-composer create-project laravel/laravel projetoaprendiz-laravel
+# 1. Clone o repositório
+git clone https://github.com/seu-usuario/projetoaprendiz-laravel.git
 cd projetoaprendiz-laravel
-# copie os arquivos deste pacote por cima (sobrescrevendo quando perguntado)
 
+# 2. Instale as dependências
+composer install
+
+# 3. Configure o ambiente
 cp .env.example .env
 php artisan key:generate
 ```
 
-Configure o `.env` com seu banco (`DB_DATABASE=projetoaprendiz` etc.) e, se quiser testar a recuperação de senha localmente, configure `MAIL_MAILER` (o padrão aponta para Mailpit — `mailpit start` se tiver instalado, ou troque para `log` para ver o e-mail no `storage/logs/laravel.log`).
+Edite o `.env` com as credenciais do seu banco:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=projetoaprendiz
+DB_USERNAME=seu_usuario
+DB_PASSWORD=sua_senha
+```
 
 ```bash
+# 4. Crie o banco de dados
+mysql -u seu_usuario -p -e "CREATE DATABASE projetoaprendiz CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 5. Rode as migrations e o seeder (popula com dados de exemplo)
 php artisan migrate:fresh --seed
-php artisan test          # roda a suíte de testes
+
+# 6. Inicie o servidor
 php artisan serve
 ```
 
-Credenciais de teste (senha `senha123` para todos):
+Acesse **http://127.0.0.1:8000** 🎉
 
-| Tipo | E-mail |
-|---|---|
-| Administrador | admin@projetoaprendiz.com |
-| Empresa | senac@senac.com / sescs@sescs.com |
-| Aluno | aluno1@aluno.com / aluno2@aluno.com / aluno3@aluno.com |
+> **MySQL/MariaDB mais antigo?** Se aparecer erro de collation, abra `config/database.php` e troque `utf8mb4_0900_ai_ci` por `utf8mb4_unicode_ci` na conexão `mysql`.
 
 ---
 
-## 🗺️ Rotas
+## 🔑 Credenciais de acesso (ambiente de desenvolvimento)
+
+| Tipo | E-mail | Senha |
+|---|---|---|
+| Administrador | admin@projetoaprendiz.com | senha123 |
+| Empresa | senac@senac.com | senha123 |
+| Empresa | sescs@sescs.com | senha123 |
+| Aprendiz | aluno1@aluno.com | senha123 |
+| Aprendiz | aluno2@aluno.com | senha123 |
+| Aprendiz | aluno3@aluno.com | senha123 |
+
+---
+
+## 🧪 Testes
+
+```bash
+php artisan test
+```
+
+A suíte cobre:
+
+- **`LoginTest`** — login nos 3 guards, senha errada, guard errado (aluno tentando logar como empresa)
+- **`RoleMiddlewareTest`** — visitante bloqueado, cross-guard bloqueado (empresa tentando acessar área de admin)
+- **`EmpresaOwnershipTest`** — empresa não consegue editar, excluir ou aprovar ponto de outra empresa (cobre exatamente as falhas de IDOR do projeto original)
+
+---
+
+## 📁 Estrutura do projeto
 
 ```
-GET  /login  ·  POST /login  ·  POST /logout
-GET/POST /esqueci-senha  ·  GET/POST /redefinir-senha/{token}
+app/Http/Controllers/
+├── AuthController.php               # Login / logout (3 tipos)
+├── Auth/PasswordResetController.php # Recuperação de senha por guard
+├── Admin/     Dashboard · Admins · Empresas · Alunos · Instituições · Pontos
+├── Empresa/   Dashboard · Perfil · Alunos · Instituições · Pontos
+└── Aluno/     Dashboard · Ponto (registrar + histórico)
 
-/admin     dashboard, admins (CRUD), empresas (CRUD), alunos (CRUD),
-           instituicoes (CRUD), pontos (listar/aprovar/rejeitar)
+app/Models/          Admin · Empresa · Aluno · InstituicaoEducacao · Ponto
+app/Middleware/      CheckRole          (protege rotas por guard)
+app/Notifications/   ResetPasswordNotification (e-mail de reset por guard)
 
-/empresa   dashboard, perfil (editar), alunos (CRUD), instituicoes (CRUD),
-           pontos (listar/aprovar/rejeitar)
+database/migrations/ 6 arquivos  (5 tabelas + tokens de reset por guard)
+database/factories/  4 arquivos  (Admin, Empresa, Aluno, InstituicaoEducacao)
+database/seeders/    DatabaseSeeder.php
 
-/aluno     dashboard, ponto/registrar, ponto/historico
+resources/views/
+├── auth/    login · forgot-password · reset-password
+├── layouts/ app.blade.php (AdminLTE, sidebar dinâmica por perfil)
+├── admin/   dashboard · admins · empresas · alunos · instituicoes · pontos
+├── empresa/ dashboard · perfil · alunos · instituicoes · pontos
+└── aluno/   dashboard · ponto/registrar · ponto/historico
+
+routes/web.php       Rotas organizadas em grupos por guard (admin / empresa / aluno)
+tests/Feature/       3 arquivos, 12 testes
 ```
 
 ---
 
-## 📌 O que não foi feito, e por quê (roadmap honesto)
+## 🗺️ Rotas principais
 
-Estas coisas ficaram de fora deliberadamente, não por esquecimento — construir sem poder rodar PHP neste ambiente (não há interpretador disponível aqui) para validar teria risco maior que valor:
+```
+/                     → redireciona para /login
+/login                GET  Tela de login (seleciona tipo + credenciais)
+/esqueci-senha        GET  Formulário de recuperação de senha
+/redefinir-senha      GET  Formulário de nova senha
 
-- **Recurso de presença com anexo (`empresa_acompanha_aluon`)**: a tabela existe no SQL original mas nunca foi implementada. Daria uma feature real (empresa marca presença/falta do aluno com upload de justificativa), mas envolve upload de arquivo — prefiro sugerir isso como próximo passo a implementar sem poder testar upload de fato.
-- **Geofencing no registro de ponto** (validar se a localização capturada está perto da empresa/instituição): não existe no original, seria uma melhoria nova, não uma paridade. Sugestão de próxima etapa.
-- **Extração de Form Requests e Policies**: a validação atual nos controllers está correta, só não é o padrão mais idiomático do Laravel (`StoreEmpresaRequest` em vez de `$request->validate()` inline). Refatorar isso em ~15 controllers sem poder rodar os testes a cada mudança é mais risco do que ganho agora — os testes incluídos cobrem o comportamento atual e continuariam válidos se alguém fizer essa refatoração depois.
+/admin/dashboard      Painel do administrador
+/admin/admins         CRUD de administradores
+/admin/empresas       CRUD de empresas
+/admin/alunos         CRUD de aprendizes
+/admin/instituicoes   CRUD de instituições
+/admin/pontos         Listagem e aprovação de todos os pontos
 
-Se quiser, posso implementar qualquer um desses agora — é só pedir.
+/empresa/dashboard    Painel da empresa
+/empresa/perfil       Edição do próprio cadastro
+/empresa/alunos       CRUD dos próprios aprendizes
+/empresa/instituicoes CRUD das próprias instituições
+/empresa/pontos       Aprovação dos pontos da empresa
+
+/aluno/dashboard      Painel do aprendiz
+/aluno/ponto/registrar   Registrar ponto com GPS
+/aluno/ponto/historico   Histórico de pontos
+```
+
+---
+
+## 🤝 Contribuindo
+
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/minha-feature`)
+3. Faça commit das alterações (`git commit -m 'feat: minha feature'`)
+4. Faça push para a branch (`git push origin feature/minha-feature`)
+5. Abra um Pull Request
+
+---
+
+## 📄 Licença
+
+Distribuído sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais informações.
