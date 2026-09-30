@@ -1,3 +1,5 @@
+![Projeto Aprendiz — Amancio.dev](.github/assets/banner.svg)
+
 <div align="center">
 
 # 🎓 Projeto Aprendiz
@@ -6,7 +8,6 @@
 
 [![PHP](https://img.shields.io/badge/PHP-8.3%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-13.x-FF2D20?style=flat-square&logo=laravel&logoColor=white)](https://laravel.com)
-[![License](https://img.shields.io/badge/licença-MIT-green?style=flat-square)](LICENSE)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://mysql.com)
 
 </div>
@@ -224,4 +225,4 @@ tests/Feature/       3 arquivos, 12 testes
 
 ## 📄 Licença
 
-Distribuído sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais informações.
+Este repositório ainda não contém um arquivo de licença. Consulte o responsável pelo projeto antes de reutilizar ou distribuir o código.
