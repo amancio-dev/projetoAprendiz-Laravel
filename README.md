@@ -1,136 +1,117 @@
-![Projeto Aprendiz — Amancio.dev](.github/assets/banner.svg)
+![Projeto Aprendiz — Amancio.dev](.github/assets/cover.svg)
 
 <div align="center">
 
-# 🎓 Projeto Aprendiz
+# Projeto Aprendiz
 
-**Sistema de gerenciamento de aprendizes com controle de presença e multi-autenticação**
+**Gerenciamento de aprendizes, controle de presença e autenticação por perfil**
 
-[![PHP](https://img.shields.io/badge/PHP-8.3%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://php.net)
-[![Laravel](https://img.shields.io/badge/Laravel-13.x-FF2D20?style=flat-square&logo=laravel&logoColor=white)](https://laravel.com)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://mysql.com)
+![PHP](https://img.shields.io/badge/PHP-8.3%2B-777BB4?style=flat-square&logo=php&logoColor=white)
+![Laravel](https://img.shields.io/badge/Laravel-13-FF2D20?style=flat-square&logo=laravel&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)
+![PHPUnit](https://img.shields.io/badge/Testes-PHPUnit-3C9CD7?style=flat-square)
 
 </div>
 
----
+[Visão geral](#visão-geral) · [Tecnologias](#tecnologias) · [Funcionalidades](#funcionalidades) · [Decisões técnicas](#decisões-técnicas) · [Como executar](#como-executar) · [Testes](#testes) · [Estrutura](#estrutura) · [Documentação](#documentação-adicional)
 
-## 📋 Sobre o projeto
+## Visão geral
 
-O **Projeto Aprendiz** é um sistema web para gerenciamento de jovens aprendizes, desenvolvido com **Laravel 13**. Conecta três partes envolvidas no Programa Jovem Aprendiz:
+O Projeto Aprendiz é um sistema web para organizar jovens aprendizes, empresas e instituições de ensino. Empresas acompanham os próprios aprendizes e aprovam registros de presença; aprendizes consultam seu histórico e podem registrar a localização capturada pelo navegador.
 
-- **Empresas** contratantes, que cadastram seus aprendizes e aprovam pontos de presença
-- **Instituições de ensino** vinculadas às empresas e turmas
-- **Aprendizes**, que registram sua presença com geolocalização via GPS
+A aplicação nasceu em PHP com PDO e foi migrada para Laravel como exercício de modernização de código legado. A evolução inclui organização em MVC, Eloquent ORM, autenticação por perfil e tratamento de falhas de autorização e armazenamento de senhas identificadas na versão original.
 
-O projeto foi originalmente desenvolvido em **PHP puro com PDO** e migrado para Laravel como exercício de modernização de código legado, incluindo correção de vulnerabilidades de segurança do projeto original.
+## Tecnologias
 
----
+| Tecnologia | Uso no projeto |
+| --- | --- |
+| PHP 8.3+ e Laravel 13 | Back-end e estrutura MVC |
+| Eloquent ORM e MySQL 8+ | Modelos, relacionamentos e persistência |
+| Autenticação com múltiplos guards | Perfis de administrador, empresa e aprendiz |
+| Blade e AdminLTE 3 | Templates e interface administrativa; AdminLTE via CDN |
+| DataTables | Busca e paginação de tabelas, via CDN |
+| HTML5 Geolocation e Leaflet.js | Captura de localização e mapa interativo |
+| OpenStreetMap | Tiles do mapa, sem API key |
+| PHPUnit | Testes automatizados |
 
-## ✨ Funcionalidades
+## Funcionalidades
 
-### 🔑 Administrador
-- Dashboard com estatísticas gerais do sistema
-- CRUD completo de empresas, aprendizes e instituições de ensino
-- Gerenciamento de outros administradores
-- Aprovação e rejeição de pontos de qualquer empresa
+| Perfil | Recursos |
+| --- | --- |
+| Administrador | Dashboard; cadastro, consulta, edição e exclusão de empresas, aprendizes e instituições; gestão de administradores; aprovação e rejeição de pontos |
+| Empresa | Dashboard dos próprios aprendizes; gestão de aprendizes e instituições vinculados à empresa; aprovação e rejeição de seus pontos; edição de perfil e credenciais |
+| Aprendiz | Registro de presença com opção de capturar localização; mapa com a posição capturada; histórico com filtro por status pendente, aprovado ou rejeitado |
 
-### 🏢 Empresa
-- Dashboard com resumo dos próprios aprendizes e pontos pendentes
-- CRUD de aprendizes e instituições vinculadas à empresa
-- Aprovação e rejeição de pontos dos próprios aprendizes
-- Edição do próprio perfil e credenciais
+## Decisões técnicas
 
-### 🎓 Aprendiz
-- Registro de ponto com captura de **GPS via HTML5 Geolocation**
-- Mapa interativo exibindo a localização capturada (Leaflet.js + OpenStreetMap)
-- Histórico de pontos com filtro por status (pendente / aprovado / rejeitado)
+- **Autenticação por perfil:** os guards `web`, `empresa` e `aluno` estão configurados com provedores próprios. O middleware `role` verifica o perfil nas rotas.
+- **Autorização por vínculo:** operações da empresa verificam a relação entre a conta autenticada e o registro solicitado. A suíte inclui tentativas de editar, excluir e aprovar registros de outra empresa.
+- **Senhas e recuperação de acesso:** senhas usam hash via `Hash::make()`; a recuperação utiliza brokers e tabelas de tokens separados por perfil.
+- **Geolocalização no navegador:** HTML5 Geolocation captura as coordenadas mediante permissão do usuário; Leaflet e OpenStreetMap mostram a posição no mapa.
 
----
+### Evolução em relação ao PHP original
 
-## 🛡️ Segurança
+| Aspecto | Implementação original | Implementação Laravel |
+| --- | --- | --- |
+| Acesso por perfil | Verificação apenas de login, sem conferir o tipo de conta | Guards configurados por perfil e middleware nas rotas |
+| Aprovação de ponto | Identificador recebido por GET sem conferir o vínculo com a empresa | Verificação do vínculo do ponto com a empresa autenticada |
+| Edição de empresa | Identificador recebido pelo request | Empresa obtida pelo guard autenticado |
+| Armazenamento de senhas | SHA-1 sem salt | Hash de senha pelo mecanismo do Laravel |
 
-Este projeto corrige quatro vulnerabilidades confirmadas no código PHP original:
-
-| Vulnerabilidade | Original | Laravel |
-|---|---|---|
-| Controle de acesso por perfil | Só verifica se está logado, nunca verifica o tipo | 3 guards isolados + middleware `role` por rota |
-| IDOR em aprovação de ponto | `id_ponto` vinha do GET sem verificar o dono | `abort_if` garante que o ponto pertence à empresa logada |
-| IDOR na edição de empresa | `id_empresa` vinha do GET, não da sessão | ID sempre obtido do guard autenticado, nunca do request |
-| Hashing de senha | SHA1 sem salt | bcrypt via `Hash::make()` |
-
----
-
-## 🚀 Stack
-
-| Tecnologia | Uso |
-|---|---|
-| Laravel 13 | Framework PHP |
-| Eloquent ORM | Models e relacionamentos |
-| Multi-guard Auth | Sessões isoladas por tipo de usuário |
-| Blade | Templates |
-| AdminLTE 3 | Interface administrativa (via CDN) |
-| DataTables | Tabelas com busca e paginação (via CDN) |
-| Leaflet.js | Mapa de geolocalização |
-| OpenStreetMap | Tiles do mapa (gratuito, sem API key) |
-| MySQL 8+ | Banco de dados |
-| PHPUnit | Testes |
-
----
-
-## ⚙️ Instalação
+## Como executar
 
 ### Pré-requisitos
+
 - PHP >= 8.3
 - Composer
 - MySQL >= 8.0
 
-### Passo a passo
+### Instalação local
 
-```bash
-# 1. Clone o repositório
-git clone https://github.com/seu-usuario/projetoaprendiz-laravel.git
-cd projetoaprendiz-laravel
+~~~bash
+git clone https://github.com/amancio-dev/projetoAprendiz-Laravel.git
+cd projetoAprendiz-Laravel
 
-# 2. Instale as dependências
 composer install
-
-# 3. Configure o ambiente
 cp .env.example .env
 php artisan key:generate
-```
+~~~
 
-Edite o `.env` com as credenciais do seu banco:
+Configure o banco no `.env`:
 
-```env
+~~~dotenv
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=projetoaprendiz
 DB_USERNAME=seu_usuario
 DB_PASSWORD=sua_senha
-```
+~~~
 
-```bash
-# 4. Crie o banco de dados
+Crie o banco:
+
+~~~bash
 mysql -u seu_usuario -p -e "CREATE DATABASE projetoaprendiz CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+~~~
 
-# 5. Rode as migrations e o seeder (popula com dados de exemplo)
+No banco local de demonstração, o comando abaixo recria as tabelas e adiciona os dados de exemplo:
+
+~~~bash
 php artisan migrate:fresh --seed
-
-# 6. Inicie o servidor
 php artisan serve
-```
+~~~
 
-Acesse **http://127.0.0.1:8000** 🎉
+Acesse [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
-> **MySQL/MariaDB mais antigo?** Se aparecer erro de collation, abra `config/database.php` e troque `utf8mb4_0900_ai_ci` por `utf8mb4_unicode_ci` na conexão `mysql`.
+> Para MySQL/MariaDB mais antigo: se ocorrer erro de collation, ajuste `utf8mb4_0900_ai_ci` para `utf8mb4_unicode_ci` na conexão MySQL de `config/database.php`.
 
----
+<details>
+<summary><strong>Acessos já definidos no seeder para demonstração local</strong></summary>
 
-## 🔑 Credenciais de acesso (ambiente de desenvolvimento)
+As contas abaixo pertencem ao ambiente de desenvolvimento criado pelo seeder.
 
 | Tipo | E-mail | Senha |
-|---|---|---|
+| --- | --- | --- |
 | Administrador | admin@projetoaprendiz.com | senha123 |
 | Empresa | senac@senac.com | senha123 |
 | Empresa | sescs@sescs.com | senha123 |
@@ -138,91 +119,94 @@ Acesse **http://127.0.0.1:8000** 🎉
 | Aprendiz | aluno2@aluno.com | senha123 |
 | Aprendiz | aluno3@aluno.com | senha123 |
 
----
+</details>
 
-## 🧪 Testes
+## Testes
 
-```bash
+~~~bash
 php artisan test
-```
+~~~
 
-A suíte cobre:
+Entre os cenários presentes na suíte estão:
 
-- **`LoginTest`** — login nos 3 guards, senha errada, guard errado (aluno tentando logar como empresa)
-- **`RoleMiddlewareTest`** — visitante bloqueado, cross-guard bloqueado (empresa tentando acessar área de admin)
-- **`EmpresaOwnershipTest`** — empresa não consegue editar, excluir ou aprovar ponto de outra empresa (cobre exatamente as falhas de IDOR do projeto original)
+| Arquivo | Cenários |
+| --- | --- |
+| `tests/Feature/Auth/LoginTest.php` | Login nos guards, senha incorreta e tentativa de login com perfil incompatível |
+| `tests/Feature/Auth/RoleMiddlewareTest.php` | Acesso de visitante e tentativas de acessar área de outro perfil |
+| `tests/Feature/EmpresaOwnershipTest.php` | Edição, exclusão e aprovação de registros de outra empresa; acesso aos próprios registros |
 
----
+A suíte também contém testes em outras áreas, como autenticação, configurações de conta e equipes. Execute o comando para verificar o resultado da versão instalada.
 
-## 📁 Estrutura do projeto
+## Estrutura
 
-```
-app/Http/Controllers/
-├── AuthController.php               # Login / logout (3 tipos)
-├── Auth/PasswordResetController.php # Recuperação de senha por guard
-├── Admin/     Dashboard · Admins · Empresas · Alunos · Instituições · Pontos
-├── Empresa/   Dashboard · Perfil · Alunos · Instituições · Pontos
-└── Aluno/     Dashboard · Ponto (registrar + histórico)
+A estrutura abaixo destaca as áreas principais do domínio, sem listar todos os arquivos:
 
-app/Models/          Admin · Empresa · Aluno · InstituicaoEducacao · Ponto
-app/Middleware/      CheckRole          (protege rotas por guard)
-app/Notifications/   ResetPasswordNotification (e-mail de reset por guard)
+~~~text
+app/
+├── Http/
+│   ├── Controllers/
+│   │   ├── AuthController.php
+│   │   ├── Auth/PasswordResetController.php
+│   │   ├── Admin/
+│   │   ├── Empresa/
+│   │   └── Aluno/
+│   └── Middleware/CheckRole.php
+├── Models/
+│   └── Admin · Empresa · Aluno · InstituicaoEducacao · Ponto
+└── Notifications/ResetPasswordNotification.php
 
-database/migrations/ 6 arquivos  (5 tabelas + tokens de reset por guard)
-database/factories/  4 arquivos  (Admin, Empresa, Aluno, InstituicaoEducacao)
-database/seeders/    DatabaseSeeder.php
+database/
+├── migrations/
+├── factories/
+└── seeders/DatabaseSeeder.php
 
 resources/views/
-├── auth/    login · forgot-password · reset-password
-├── layouts/ app.blade.php (AdminLTE, sidebar dinâmica por perfil)
-├── admin/   dashboard · admins · empresas · alunos · instituicoes · pontos
-├── empresa/ dashboard · perfil · alunos · instituicoes · pontos
-└── aluno/   dashboard · ponto/registrar · ponto/historico
+├── auth/
+├── layouts/app.blade.php
+├── admin/
+├── empresa/
+└── aluno/
 
-routes/web.php       Rotas organizadas em grupos por guard (admin / empresa / aluno)
-tests/Feature/       3 arquivos, 12 testes
-```
+routes/web.php
+tests/Feature/
+~~~
 
----
+## Documentação adicional
 
-## 🗺️ Rotas principais
+<details>
+<summary><strong>Rotas principais</strong></summary>
 
-```
-/                     → redireciona para /login
-/login                GET  Tela de login (seleciona tipo + credenciais)
-/esqueci-senha        GET  Formulário de recuperação de senha
-/redefinir-senha      GET  Formulário de nova senha
+| Rota | Uso |
+| --- | --- |
+| `/` | Redirecionamento para login |
+| `/login` | Seleção de perfil e credenciais |
+| `/esqueci-senha` | Recuperação de senha |
+| `/redefinir-senha/{token}` | Formulário de nova senha |
+| `/admin/dashboard` | Painel do administrador |
+| `/admin/admins` | Gestão de administradores |
+| `/admin/empresas` | Gestão de empresas |
+| `/admin/alunos` | Gestão de aprendizes |
+| `/admin/instituicoes` | Gestão de instituições |
+| `/admin/pontos` | Listagem e aprovação de pontos |
+| `/empresa/dashboard` | Painel da empresa |
+| `/empresa/perfil` | Edição do próprio cadastro |
+| `/empresa/alunos` | Gestão dos próprios aprendizes |
+| `/empresa/instituicoes` | Gestão de instituições vinculadas |
+| `/empresa/pontos` | Aprovação dos pontos da empresa |
+| `/aluno/dashboard` | Painel do aprendiz |
+| `/aluno/ponto/registrar` | Registro de presença |
+| `/aluno/ponto/historico` | Histórico de pontos |
 
-/admin/dashboard      Painel do administrador
-/admin/admins         CRUD de administradores
-/admin/empresas       CRUD de empresas
-/admin/alunos         CRUD de aprendizes
-/admin/instituicoes   CRUD de instituições
-/admin/pontos         Listagem e aprovação de todos os pontos
+</details>
 
-/empresa/dashboard    Painel da empresa
-/empresa/perfil       Edição do próprio cadastro
-/empresa/alunos       CRUD dos próprios aprendizes
-/empresa/instituicoes CRUD das próprias instituições
-/empresa/pontos       Aprovação dos pontos da empresa
+### Contribuição
 
-/aluno/dashboard      Painel do aprendiz
-/aluno/ponto/registrar   Registrar ponto com GPS
-/aluno/ponto/historico   Histórico de pontos
-```
+1. Faça um fork do projeto.
+2. Crie uma branch: `git checkout -b feature/minha-feature`.
+3. Faça commit: `git commit -m 'feat: minha feature'`.
+4. Envie a branch: `git push origin feature/minha-feature`.
+5. Abra um Pull Request.
 
----
-
-## 🤝 Contribuindo
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/minha-feature`)
-3. Faça commit das alterações (`git commit -m 'feat: minha feature'`)
-4. Faça push para a branch (`git push origin feature/minha-feature`)
-5. Abra um Pull Request
-
----
-
-## 📄 Licença
+## Licença
 
 Este repositório ainda não contém um arquivo de licença. Consulte o responsável pelo projeto antes de reutilizar ou distribuir o código.
