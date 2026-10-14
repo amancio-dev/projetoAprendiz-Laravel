@@ -1,4 +1,4 @@
-![Projeto Aprendiz — Amancio.dev](.github/assets/cover.svg)
+![Projeto Aprendiz — Amancio.dev](.github/assets/cover.svg?v=b2aa67ce59)
 
 <div align="center">
 
